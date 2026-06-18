@@ -9,11 +9,13 @@ package obs
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/getsentry/sentry-go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -59,11 +61,21 @@ func Init(ctx context.Context, cfg Config) (Shutdown, error) {
 	}
 
 	if cfg.OTLPEndpoint != "" {
-		exp, err := otlptracegrpc.New(ctx,
-			otlptracegrpc.WithEndpoint(cfg.OTLPEndpoint),
-			otlptracegrpc.WithInsecure(),
-			otlptracegrpc.WithTimeout(5*time.Second),
-		)
+		var exp sdktrace.SpanExporter
+		var err error
+		ep := cfg.OTLPEndpoint
+		if strings.HasPrefix(ep, "http://") || strings.HasPrefix(ep, "https://") {
+			exp, err = otlptracehttp.New(ctx,
+				otlptracehttp.WithEndpointURL(ep),
+				otlptracehttp.WithTimeout(5*time.Second),
+			)
+		} else {
+			exp, err = otlptracegrpc.New(ctx,
+				otlptracegrpc.WithEndpoint(ep),
+				otlptracegrpc.WithInsecure(),
+				otlptracegrpc.WithTimeout(5*time.Second),
+			)
+		}
 		if err != nil {
 			return nil, fmt.Errorf("obs: otlp exporter: %w", err)
 		}
