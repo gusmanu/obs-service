@@ -57,6 +57,13 @@ func PublishCore(ctx context.Context, nc *nats.Conn, subject string, payload any
 	return nc.PublishMsg(msg)
 }
 
+// Inject writes the active trace context into an existing NATS header map. Use
+// it for the PublishMsg-with-options case where Publish (which builds its own
+// message) isn't suitable. Initialize the header first: msg.Header = nats.Header{}.
+func Inject(ctx context.Context, h nats.Header) {
+	otel.GetTextMapPropagator().Inject(ctx, headerCarrier(h))
+}
+
 // Extract returns ctx enriched with the trace context found in the message
 // headers (no-op when absent). Use it when you only need correlation, not a span.
 func Extract(ctx context.Context, h nats.Header) context.Context {
