@@ -35,8 +35,20 @@ func Handler() http.Handler {
 // ":9100"). Intended for worker services that have no HTTP server of their own.
 // Non-blocking: it launches a goroutine and logs on exit.
 func StartServer(addr string) {
+	h := http.Handler(Handler())
+	start(addr, h)
+}
+
+// StartServerWithHandler is like StartServer but wraps the /metrics handler
+// with h (e.g. httpx.Wrap for OpenTelemetry tracing of scrape requests).
+func StartServerWithHandler(addr string, wrap func(http.Handler) http.Handler) {
+	h := wrap(Handler())
+	start(addr, h)
+}
+
+func start(addr string, h http.Handler) {
 	mux := http.NewServeMux()
-	mux.Handle("/metrics", Handler())
+	mux.Handle("/metrics", h)
 	srv := &http.Server{Addr: addr, Handler: mux}
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
