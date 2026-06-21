@@ -1,6 +1,9 @@
 package obs
 
-import "os"
+import (
+	"os"
+	"strings"
+)
 
 // Config controls how the observability runtime is wired. Prefer ConfigFromEnv;
 // override individual fields only when a service needs to.
@@ -29,13 +32,16 @@ func ConfigFromEnv(serviceName string) Config {
 	if name == "" {
 		name = serviceName
 	}
+	ep := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	ep = strings.TrimPrefix(ep, "http://")
+	ep = strings.TrimPrefix(ep, "https://")
 	return Config{
 		ServiceName:  name,
 		Env:          envOr("ENV", "production"),
 		LogLevel:     os.Getenv("LOG_LEVEL"),
 		LogFormat:    os.Getenv("LOG_FORMAT"),
 		SentryDSN:    os.Getenv("SENTRY_DSN"),
-		OTLPEndpoint: os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+		OTLPEndpoint: ep,
 	}
 }
 
